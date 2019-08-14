@@ -12,6 +12,7 @@ const productsDOM = document.querySelector('.products-center');
 
 //cart
 let cart = []
+let buttonsDOM = []
 
 //getting the products
 class Products {
@@ -55,7 +56,7 @@ class UI {
                     <img src=${product.image} alt="product" class="product-img">
                     <button class="bag-btn" data-id=${product.id}>
                         <i class="fas fa-shopping-cart"></i>
-                        add to bag
+                        add to cart
                     </button>
                 </div>
                 <h3>${product.title}</h3>
@@ -68,6 +69,7 @@ class UI {
     }
     getBagButtons() {
         const buttons = [...document.querySelectorAll(".bag-btn")];
+        buttonsDOM = buttons;
         buttons.forEach(button => {
             let id = button.dataset.id;
 
@@ -78,7 +80,7 @@ class UI {
             } else {
                 button.addEventListener("click", event => {
                     // disable button
-                    event.target.innerText = "In Bag";
+                    event.target.innerText = "In Cart";
                     event.target.disabled = true;
                     // add to cart
                     let cartItem = {
@@ -136,6 +138,84 @@ class UI {
         cartOverlay.classList.add("transparentBcg");
         cartDOM.classList.add("showCart");
     }
+
+    setupApp() {
+        cart = Storage.getCart();
+        this.setCartValues(cart);
+        this.populateCart(cart);
+        cartBtn.addEventListener('click', this.showCart);
+        closeCartBtn.addEventListener('click', this.hideCart);
+    }
+
+    populateCart(cart) {
+        cart.forEach(item => {
+            this.addCartItem(item);
+        });
+    }
+
+    hideCart() {
+        cartOverlay.classList.remove("transparentBcg");
+        cartDOM.classList.remove("showCart");
+    }
+
+    cartLogic() {
+        clearCartBtn.addEventListener('click', () => {
+            this.clearCart();
+        });
+        cartContent.addEventListener('click', e => {
+            if (e.target.classList.contains('remove-item')) {
+                let removeItem = e.target;
+                let id = removeItem.dataset.id;
+                cartContent.removeChild(removeItem.parentElement.parentElement);
+                this.removeItem(id);
+            } else if (e.target.classList.contains('fa-chevron-up')) {
+                let addAmount = e.target;
+                let id = addAmount.dataset.id;
+                let tempItem = cart.find(item => item.id === id);
+                tempItem.amount += 1;
+                Storage.saveCart(cart);
+                this.setCartValues(cart);
+                addAmount.nextElementSibling.innerText = tempItem.amount;
+            } else if (e.target.classList.contains('fa-chevron-down')) {
+                let lowerAmount = event.target;
+                let id = lowerAmount.dataset.id;
+                let tempItem = cart.find(item => item.id === id);
+                tempItem.amount -= 1;
+                if (tempItem.amount > 0) {
+                    Storage.saveCart(cart);
+                    this.setCartValues(cart);
+                    lowerAmount.previousElementSibling.innerText = tempItem.amount;
+                } else {
+                    cartContent.removeChild(lowerAmount.parentElement.parentElement);
+                    this.removeItem(id);
+                }
+            }
+        })
+    }
+
+    clearCart() {
+        let cartItems = cart.map(item => item.id);
+        cartItems.forEach(id => {
+            this.removeItem(id);
+        });
+        while (cartContent.children.length > 0) {
+            cartContent.removeChild(cartContent.children[0]);
+        }
+        this.hideCart();
+    }
+
+    removeItem(id) {
+        cart = cart.filter(item => item.id !== id);
+        this.setCartValues(cart);
+        Storage.saveCart(cart);
+        let button = this.getSingleButton(id);
+        button.disabled = false;
+        button.innerHTML = `<i class="fas fa-shopping-cart"></i>add to cart`;
+    }
+
+    getSingleButton(id) {
+        return buttonsDOM.find(button => button.dataset.id === id);
+    }
 }
 
 //local storage
@@ -159,6 +239,9 @@ class Storage {
 document.addEventListener("DOMContentLoaded", () => {
     const ui = new UI();
     const products = new Products();
+
+    //setup app
+    ui.setupApp();
 
     //get all products
     products
